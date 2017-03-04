@@ -32,17 +32,17 @@
 #include <ESP8266_Lib.h>
 #include <BlynkSimpleShieldEsp8266.h>
 #include <SimpleTimer.h>
-#include "Ai_WS2811.h"
+#include <Adafruit_NeoPixel.h>
 #include <Servo.h>
+
+#define LPIN 7
+#define NUMLED 1
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMLED, LPIN, NEO_GRB + NEO_KHZ800);
+int lRed, lGreen, lBlue = 0;
+
 
 Servo servo1;
 Servo servo2;
-
-#define WS_LED 7
-Ai_WS2811 ws2811;
-//RGB colors in hex
-byte c000 = 0x00;
-byte c255 = 0xff;
 
 int buzzerPin = 11;
 int maxDistanceBuzzer;
@@ -97,43 +97,25 @@ void getsr04() {
   }
 }
 
-void sendLEDs()
-{
-  cli();
-    ws2811.send();
-  sei();
+void setColorOnLed() {
+  pixels.setPixelColor(0,lRed, lGreen, lBlue);
+  pixels.show();
 }
 
 //Set color on led on virtual write
-BLYNK_WRITE(V55) {
-  ws2811.setColor(c000,c255,c255);
-  sendLEDs();
-}
 BLYNK_WRITE(V56) {
-  ws2811.setColor(c255,c255,c255);
-  sendLEDs();
+  lRed = param.asInt();
+  setColorOnLed();
 }
 BLYNK_WRITE(V57) {
-  ws2811.setColor(c000,c255,c000);
-  sendLEDs();
+  lGreen = param.asInt();
+  setColorOnLed();
 }
 BLYNK_WRITE(V58) {
-  ws2811.setColor(c255,c255,c000);
-  sendLEDs();
-}
-BLYNK_WRITE(V59) {
-  ws2811.setColor(c255,c000,c000);
-  sendLEDs();
-}
-BLYNK_WRITE(V60) {
-  ws2811.setColor(c000,c000,c255);
-  sendLEDs();
-}
-BLYNK_WRITE(V61) {
-  ws2811.setColor(c000,c000,c000);
-  sendLEDs();
-}
+  lBlue = param.asInt();
+  setColorOnLed();
 
+}
 //turn on/off distance measurement
 BLYNK_WRITE(V62) {
       if (param.asInt()) {
@@ -187,7 +169,7 @@ void setup()
   EspSerial.begin(ESP8266_BAUD);
   delay(10);
   pinMode(9, OUTPUT);
-   pinMode(11, OUTPUT);
+  pinMode(11, OUTPUT);
   pinMode(8, INPUT);
   pinMode(53, OUTPUT);
   pinMode(52, INPUT);
@@ -203,10 +185,17 @@ void setup()
   maxDistanceBuzzer = 3;
 
   //neopixel led init
-  ws2811.init(WS_LED);
+  pixels.begin();
+ 
 
   Blynk.begin(auth, wifi, ssid, pass, "192.168.43.1");
   sr04.setInterval(900L, getsr04);
+
+  pixels.setPixelColor(0,40, 40, 40); 
+  pixels.show();
+  delay(400);
+  pixels.setPixelColor(0,0, 0, 0); 
+  pixels.show();
 
   analogWrite(6, 135);
   analogWrite(5, 135);
