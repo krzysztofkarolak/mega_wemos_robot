@@ -18,7 +18,9 @@
  * D52 - ECHO SR04 1
  * D53 - TRIG SR04 1
  * 
- * 
+ * V5-6 measure distance
+ * V7 - photoresistor value
+ * V56-58 - WS2812 colors
  * V62 - measure1 on/off 0-1
  * V63 - measure1 on/off 0-1
  * V64 - SERVO1 MOVE VIRTUAL - values 0-180
@@ -45,9 +47,10 @@ Servo servo1;
 Servo servo2;
 
 int buzzerPin = 11;
-int maxDistanceBuzzer;
-boolean measure1State = false;
-boolean measure2State = false;
+int maxDistanceBuzzer, photoresVal;
+boolean measure1State = false, measure2State = false;
+boolean photoresState = true, photoColorToChange = true;
+
 
 SimpleTimer sr04;
 
@@ -95,6 +98,25 @@ void getsr04() {
   if(measure2State) {
   Blynk.virtualWrite(V6, measureDistance(53,52));
   }
+  //photoresistor auto light
+  if(photoresState) {
+  photoresVal = analogRead(15);
+  Blynk.virtualWrite(V7, photoresVal);
+  if(photoresVal<25) {
+    if(photoColorToChange) {
+      pixels.setPixelColor(0,255, 255, 255);
+      pixels.show();
+      photoColorToChange=false;
+    }
+  }
+  else {
+    if(!photoColorToChange) {
+      pixels.setPixelColor(0,0, 0, 0);
+      pixels.show();
+      photoColorToChange=true;
+    }
+  }
+  } //photoresState
 }
 
 void setColorOnLed() {
@@ -116,6 +138,17 @@ BLYNK_WRITE(V58) {
   setColorOnLed();
 
 }
+
+//turn on/off light measurement
+BLYNK_WRITE(V61) {
+   if(param.asInt()) {
+     photoresState = true;
+   }
+   else {
+     photoresState = false;
+   }
+}
+
 //turn on/off distance measurement
 BLYNK_WRITE(V62) {
       if (param.asInt()) {
