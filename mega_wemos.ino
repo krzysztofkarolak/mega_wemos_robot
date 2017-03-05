@@ -21,11 +21,14 @@
  * V5-6 measure distance
  * V7 - photoresistor value
  * V56-58 - WS2812 colors
+ * V60 - on/off motors auto stop
+ * V61 - on/off photoresistor measurements
  * V62 - measure1 on/off 0-1
  * V63 - measure1 on/off 0-1
  * V64 - SERVO1 MOVE VIRTUAL - values 0-180
  * V65 - SERVO2 MOVE VIRTUAL - values 0-180
  * V66 - change measure buzzer moment - values 1-199
+ * V67 - change motors stop moment
  * 
  */
 
@@ -47,9 +50,9 @@ Servo servo1;
 Servo servo2;
 
 int buzzerPin = 11;
-int maxDistanceBuzzer, photoresVal;
+int maxDistanceBuzzer, maxDistanceMotors, photoresVal, measure1Val, measure2Val;
 boolean measure1State = false, measure2State = false;
-boolean photoresState = true, photoColorToChange = true;
+boolean photoresState = true, photoColorToChange = true, motorstopState = false, motorsToStop = true;
 
 
 SimpleTimer sr04;
@@ -93,11 +96,34 @@ long measureDistance(int trigPin, int echoPin) {
 
 void getsr04() {
   if(measure1State){
-  Blynk.virtualWrite(V5, measureDistance(9,8));
+  measure1Val = measureDistance(9,8);
+  Blynk.virtualWrite(V5, measure1Val);
   }
   if(measure2State) {
-  Blynk.virtualWrite(V6, measureDistance(53,52));
+  measure2Val = measureDistance(53,52);
+  Blynk.virtualWrite(V6, measure2Val);
   }
+
+  if(measure1State || measure2State) {
+  //motors auto stop
+  if(motorstopState) {
+  if((measure1Val<maxDistanceMotors) || (measure2Val<maxDistanceMotors)) {
+    if(motorsToStop) {
+      digitalWrite(48, LOW);
+      digitalWrite(49, LOW);
+      digitalWrite(50, LOW);
+      digitalWrite(51, LOW);
+      motorsToStop = false;
+    }
+  }
+  else {
+    if(!motorsToStop) {
+      motorsToStop = true;
+    }
+  }
+  }//motorstopState
+  }//measure1State||measure2State
+  
   //photoresistor auto light
   if(photoresState) {
   photoresVal = analogRead(15);
@@ -117,6 +143,7 @@ void getsr04() {
     }
   }
   } //photoresState
+ 
 }
 
 void setColorOnLed() {
@@ -137,6 +164,16 @@ BLYNK_WRITE(V58) {
   lBlue = param.asInt();
   setColorOnLed();
 
+}
+
+//turn on/off motors auto stop
+BLYNK_WRITE(V60) {
+   if(param.asInt()) {
+     motorstopState = true;
+   }
+   else {
+     motorstopState = false;
+   }
 }
 
 //turn on/off light measurement
@@ -182,15 +219,12 @@ BLYNK_WRITE(V65)
 //buzzer activate moment change
 BLYNK_WRITE(V66)
 {
-  if(param.asInt() == 5) {
-  maxDistanceBuzzer = 5;
-  }
-  else if(param.asInt() == 10) {
-  maxDistanceBuzzer = 10;
-  }
-  else {
-  maxDistanceBuzzer = 3;
-  }
+  maxDistanceBuzzer = param.asInt();
+}
+//motors stop moment change
+BLYNK_WRITE(V67)
+{
+  maxDistanceMotors = param.asInt();
 }
 
 void setup()
@@ -215,14 +249,15 @@ void setup()
   servo2.attach(37);
   servo2.write(150);
 
-  maxDistanceBuzzer = 3;
+  maxDistanceBuzzer = 8;
+  maxDistanceMotors = 38;
 
   //neopixel led init
   pixels.begin();
  
 
   Blynk.begin(auth, wifi, ssid, pass, "192.168.43.1");
-  sr04.setInterval(900L, getsr04);
+  sr04.setInterval(400L, getsr04);
 
   pixels.setPixelColor(0,40, 40, 40); 
   pixels.show();
