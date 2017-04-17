@@ -54,7 +54,7 @@ Servo servo1;
 Servo servo2;
 
 int buzzerPin = 11;
-int maxDistanceBuzzer, maxDistanceMotors, photoresVal, measure1Val, measure2Val, speedVal=140, speedToTurnVal, smoothSpeed;
+int maxDistanceBuzzer, maxDistanceMotors, photoresVal, measure1Val, measure2Val, speedVal=140, speedToTurnVal, measureSamplesNum = 2;
 boolean measure1State = false, measure2State = false;
 boolean photoresState = true, photoColorToChange = true, motorstopState = false, motorsToStop = true, autoBuzzerState = false;
 boolean d50State = false, d48State = false, d49State = false, d51State = false, d50TurnState = false, d48TurnState = false, d49TurnState = false, d51TurnState = false, advancedTurn = true, smoothState = true;
@@ -127,11 +127,19 @@ long measureDistance(int trigPin, int echoPin) {
 
 void getsr04() {
   if(measure1State){
-  measure1Val = measureDistance(9,8);
+  measure1Val=0;  
+  for(int i=0;i<measureSamplesNum;i++){  
+  measure1Val+= measureDistance(9,8);
+  }
+  measure1Val/=measureSamplesNum;
   Blynk.virtualWrite(V5, measure1Val);
   }
   if(measure2State) {
-  measure2Val = measureDistance(53,52);
+  measure2Val=0;  
+  for(int i=0;i<measureSamplesNum;i++){  
+  measure2Val+= measureDistance(53,52);
+  }
+  measure2Val/=measureSamplesNum;
   Blynk.virtualWrite(V6, measure2Val);
   }
 
@@ -450,13 +458,20 @@ BLYNK_WRITE(V68)
         autoBuzzerState = false;
         }
 }
+//motors speed
 BLYNK_WRITE(V69) {
   speedVal=param.asInt();
   setSpeedVal(speedVal);
 }
+//alternative motors steering setting (boolean)
 BLYNK_WRITE(V70)
 {
   advancedTurn = param.asInt();
+}
+//how many tries to avg measurements (int)
+BLYNK_WRITE(V71)
+{
+  measureSamplesNum = param.asInt();
 }
 
 void setup()
